@@ -31,9 +31,13 @@ parser.add_option("-o", "--output", dest="output",
                   help="Path where to save results.",
                   default="output.csv")
 
+#  Path of the datasets
+AFINN = 'AFINN.txt'
+IMDB = 'imdb.txt' # TODO Check the path
 
-def evaluate(X,y):
-    X_train, X_test, y_train, y_test = train_test_split(X, y, shuffle=True, test_size=0.30, random_state=42)  # Should I use validation data? I am tunning the classifier?
+def evaluate(X1, y1, X2, y2):
+    X_train, _, y_train, _ = train_test_split(X1, y1, shuffle=True, test_size=0.30, random_state=42)  # Should I use validation data? I am tunning the classifier?
+    _, X_test, _, y_test = train_test_split(X2, y2, shuffle=True, test_size=0.30, random_state=42)  # Should I concatenate the test corpus if the domains are different?
     reg = linear_model.LinearRegression()
     reg.fit(X_train, y_train)
     y_pred = reg.predict(X_test)
@@ -43,12 +47,24 @@ def evaluate(X,y):
     print("The accuracy is {0}".format(acc))
     return df
 
-2
+
 def try_apply(m, x, dim):
     try:
         return m[x]
     except KeyError:
         return np.zeros(dim)
+
+
+def apply_then_avg(m, x, dim):
+    result = 0
+    i=0
+    for word in x:
+        i+=1
+        try:
+            result += m[word]
+        except KeyError:
+            pass  # Avg of known words? Replace unknown by 0?
+    return np.divide(result,i)
 
 
 if __name__ == "__main__":
@@ -71,8 +87,19 @@ if __name__ == "__main__":
             model = Word2Vec.load(fname)
             kv = model.wv
             if iname == 'word' and ename == 'word':
-                df = pd.read_csv('AFINN.txt', sep='\t', header=None)
+                df = pd.read_csv(AFINN, sep='\t', header=None)
                 df[0] = df[0].apply(lambda x: try_apply(model, x, kv.vector_size))  # If it don't know a word what I do? n zeroes by now.
                 X = np.stack(df[0].values)
                 y = df[1].values
-                results = evaluate(X, y)
+                results = evaluate(X, y, X, y)  # Domains are the same
+            elif iname == 'word' and ename == 'sentence':
+                df1 = pd.read_csv(AFINN, sep='\t', header=None)
+                df1[0] = df1[0].apply(lambda x: try_apply(model, x, kv.vector_size))  # If it don't know a word what I do? n zeroes by now.
+                df2 = pd.read_csv(IMDB, sep='\t', header=None)
+                df2[0] = df2[0].apply(lambda x: )
+                df2[1] = 0 # TODO Pasar pos y neg a -1 y 1
+                X1 = np.stack(df1[0].values)
+                y1 = df1[1].values
+                results = evaluate(X1, y1, X2, y2)
+
+
